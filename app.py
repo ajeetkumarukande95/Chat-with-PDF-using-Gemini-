@@ -25,6 +25,7 @@ def get_pdf_text(pdf_docs):
     return text
 
 # Function to split text into chunks
+@st.cache_data
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
