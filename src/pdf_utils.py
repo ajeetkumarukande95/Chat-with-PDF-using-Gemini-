@@ -16,7 +16,7 @@ def get_pdf_text(pdf_docs):
         st.error("An error occurred while reading the PDF files.")
     return text
 
-@st.cache
+@st.cache_data
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
