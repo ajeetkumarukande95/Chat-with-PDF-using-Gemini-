@@ -10,6 +10,11 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from dotenv import load_dotenv
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -44,10 +49,9 @@ def get_conversational_chain():
     provided context just say, "answer is not available in the context", don't provide the wrong answer\n\n
     Context:\n {context}?\n
     Question: \n{question}\n
-
+    
     Answer:
     """
-
     model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
@@ -59,26 +63,45 @@ def get_conversational_chain():
 
 # Function to handle user input and update the conversation
 def user_input(user_question):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-    docs = new_db.similarity_search(user_question)
+    try:
+        # Log the user question
+        logger.info(f"Processing user question: {user_question}")
 
-    chain = get_conversational_chain()
+        # Load embeddings
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        logger.info("Embeddings loaded successfully.")
 
-    response = chain(
-        {"input_documents": docs, "question": user_question},
-        return_only_outputs=True
-    )
+        # Load the vector store
+        new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+        logger.info("Vector store loaded successfully.")
 
-    # Update conversation history in session state
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
+        # Perform similarity search
+        docs = new_db.similarity_search(user_question)
+        logger.info(f"Similarity search completed. Found {len(docs)} documents.")
 
-    st.session_state["chat_history"].append((user_question, response["output_text"]))
+        # Get conversational chain and generate response
+        chain = get_conversational_chain()
+        response = chain(
+            {"input_documents": docs, "question": user_question},
+            return_only_outputs=True
+        )
+        logger.info(f"Generated response: {response['output_text']}")
 
-    # Keep only the last three items in the history
-    if len(st.session_state["chat_history"]) > 3:
-        st.session_state["chat_history"] = st.session_state["chat_history"][-3:]
+        # Update conversation history in session state
+        if "chat_history" not in st.session_state:
+            st.session_state["chat_history"] = []
+        
+        st.session_state["chat_history"].append((user_question, response["output_text"]))
+
+        # Keep only the last three items in the history
+        if len(st.session_state["chat_history"]) > 3:
+            st.session_state["chat_history"] = st.session_state["chat_history"][-3:]
+
+    except Exception as e:
+        # Log the exception
+        logger.error(f"An error occurred: {e}")
+        # Optionally, you can display an error message to the user
+        st.error("An error occurred while processing your request. Please try again later.")
 
 # Main function to set up the Streamlit app
 def main():
