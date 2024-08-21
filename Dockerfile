@@ -17,4 +17,4 @@ COPY . /app
 EXPOSE 8501
 
 # Command to run the Streamlit app
-CMD ["streamlit", "run", "chat_app4.py"]
+CMD ["streamlit", "run", "app.py"]
